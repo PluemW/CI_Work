@@ -5,3 +5,5 @@
     - Computing cost
     - Implementing backward propagation to get the gradients
     - Updating parameters through gradient descent
+
+link : https://colab.research.google.com/github/maticvl/dataHacker/blob/master/NN/NN_010_B_Training_a_Shallow_Neural_Network.ipynb
