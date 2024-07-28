@@ -152,10 +152,8 @@ def split_data(input_data, output_data, val_ratio=0.2):
     return X_train, X_val, Y_train, Y_val
 
 if __name__ == "__main__":
-    ###
-        Flood_dataset file must has layer format by [8, ... , 1]
-        cross_dataset file must has layer format by [2, ... , 2]
-    ###
+    ### Flood_dataset file must has layer format by [8, ... , 1]
+    ### cross_dataset file must has layer format by [2, ... , 2]
 
     X, Y = readfile('flood')
     X_train, X_val, Y_train, Y_val = split_data(X, Y, val_ratio=0.2)
