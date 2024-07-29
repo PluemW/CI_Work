@@ -31,7 +31,7 @@ class shallow():
 
     def init_params(self):
         weights = [np.random.randn(self.layer[i], self.layer[i-1]) * 0.01 for i in range(1, len(self.layer))]
-        biases = [self.activation(np.random.rand(self.layer[i], 1)) for i in range(1, len(self.layer))]
+        biases = [np.random.rand(self.layer[i], 1) for i in range(1, len(self.layer))]
         return weights, biases
 
     def forward_pass(self, input_data):
