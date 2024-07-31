@@ -61,9 +61,6 @@ class shallow():
         return delta_weights, delta_biases
 
     def update_parameters(self, delta_weights, delta_biases):
-        # for i in range(len(self.weights)):
-        #     self.weights[i] -= self.learning_rate * delta_weights[i]
-        #     self.biases[i] -= self.learning_rate * delta_biases[i]
         for i in range(len(self.weights)):
             # Update weights with momentum
             self.v_weights[i] = self.momentum * self.v_weights[i] + (1 - self.momentum) * delta_weights[i]
