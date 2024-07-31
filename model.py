@@ -8,6 +8,8 @@ class shallow():
         self.momentum = momentum
         self.activative = activative
         self.weights, self.biases = self.init_params()
+        self.v_weights = [np.zeros_like(w) for w in self.weights]
+        self.v_biases = [np.zeros_like(b) for b in self.biases]
 
     def activation(self, x):
         if self.activative == "sigmoid":
@@ -31,13 +33,13 @@ class shallow():
 
     def init_params(self):
         weights = [np.random.randn(self.layer[i], self.layer[i-1]) * 0.01 for i in range(1, len(self.layer))]
-        biases = [np.random.rand(self.layer[i], 1) for i in range(1, len(self.layer))]
+        biases = [self.activation(np.random.rand(self.layer[i], 1)) for i in range(1, len(self.layer))]
         return weights, biases
 
     def forward_pass(self, input_data):
         self.x = [input_data.T]
         for i in range(len(self.layer) - 1):
-            self.x.append(self.activation((np.dot(self.weights[i], self.x[i])))+ self.biases[i])
+            self.x.append(self.activation(np.dot(self.weights[i], self.x[i])) + self.biases[i])
         return self.x[-1]
 
     def backward_pass(self, input_data, output_data):
@@ -59,12 +61,27 @@ class shallow():
         return delta_weights, delta_biases
 
     def update_parameters(self, delta_weights, delta_biases):
+        # for i in range(len(self.weights)):
+        #     self.weights[i] -= self.learning_rate * delta_weights[i]
+        #     self.biases[i] -= self.learning_rate * delta_biases[i]
         for i in range(len(self.weights)):
-            self.weights[i] -= self.learning_rate * delta_weights[i]
-            self.biases[i] -= self.learning_rate * delta_biases[i]
+            # Update weights with momentum
+            self.v_weights[i] = self.momentum * self.v_weights[i] + (1 - self.momentum) * delta_weights[i]
+            self.weights[i] -= self.learning_rate * self.v_weights[i]
+            
+            # Update biases with momentum
+            self.v_biases[i] = self.momentum * self.v_biases[i] + (1 - self.momentum) * delta_biases[i]
+            self.biases[i] -= self.learning_rate * self.v_biases[i]
 
     def compute_loss(self, predictions, output_data):
         return np.mean(np.square(predictions - output_data if self.layer[0]==8 else output_data.T))
+
+    def predict(self, input_data):
+        output = self.forward_pass(input_data)
+        if self.layer[-1] == 1:
+            return (output > 0.5).astype(int)
+        else:
+            return np.argmax(output, axis=1)
 
     def train(self, input_data, output_data, val_input, val_output, epochs=1000):
         train_losses = []
@@ -86,16 +103,37 @@ class shallow():
             val_losses.append(val_loss)
 
             if epoch % 10 == 0:
-                print(f"Epoch {epoch}, Training Loss: {train_loss:.4f}, Validation Loss: {val_loss:.4f}")
+                print(f"Epoch {epoch}, Training Loss: {train_loss}, Validation Loss: {val_loss}")
                 
         print("Training complete.")
-        plt.plot(train_losses, label='Flood Training Loss' if self.layer[0]==8 else 'Crooss Training Loss')
-        plt.plot(val_losses, label='Flood Validation Loss' if self.layer[0]==8 else 'Crooss Validation Loss')
+        plt.plot(train_losses, label='Training Loss')
+        plt.plot(val_losses, label='Validation Loss')
         plt.xlabel('Epoch')
         plt.ylabel('Loss')
         plt.title('Training and Validation Loss')
         plt.legend()
         plt.grid(True)
+
+def compute_confusion_matrix(y_true, y_pred):
+    # Determine the number of classes
+    num_classes = np.max(y_true) + 1
+    cm = np.zeros((num_classes, num_classes), dtype=int)
+    for true_label, pred_label in zip(y_true, y_pred):
+        cm[true_label, pred_label] += 1
+    return cm
+
+def plot_confusion_matrix(cm):
+    plt.imshow(cm, interpolation='nearest', cmap=plt.cm.Blues)
+    plt.title('Confusion Matrix')
+    plt.colorbar()
+    classes = np.arange(cm.shape[0])
+    plt.xticks(classes, classes)
+    plt.yticks(classes, classes)
+
+    plt.xlabel('Predicted label')
+    plt.ylabel('True label')
+    plt.grid(False)
+    plt.show()
 
 def readfile(filename):
     return readfile_1() if filename=="flood" else (readfile_2() if filename=="cross" else print("Error file"))
@@ -152,17 +190,23 @@ def split_data(input_data, output_data, val_ratio=0.2):
     return X_train, X_val, Y_train, Y_val
 
 if __name__ == "__main__":
-    ### Flood_dataset file must has layer format by [8, ... , 1]
-    ### cross_dataset file must has layer format by [2, ... , 2]
-
     X, Y = readfile('flood')
     X_train, X_val, Y_train, Y_val = split_data(X, Y, val_ratio=0.2)
-    nn = shallow(layer=[8, 16, 1], learning_rate=0.01, activative="sigmoid")
-    nn.train(np.array(X_train), np.array(Y_train), np.array(X_val), np.array(Y_val), epochs=500)
+    nn = shallow(layer=[8, 16, 1], learning_rate=0.01, activative="tanh")
+    nn.train(np.array(X_train), np.array(Y_train), np.array(X_val), np.array(Y_val), epochs=2000)
     
     X1, Y1 = readfile('cross')
-    X1_train, X1_val, Y1_train, Y1_val = split_data(X1, Y1, val_ratio=0.2)
+    X1_train, X1_val, Y1_train, Y1_val = split_data(X1, Y1, val_ratio=0.3)
     nn1 = shallow(layer=[2, 16, 2], learning_rate=0.01, activative="relu")
-    nn1.train(np.array(X1_train), np.array(Y1_train), np.array(X1_val), np.array(Y1_val), epochs=500)
+    nn1.train(np.array(X1_train), np.array(Y1_train), np.array(X1_val), np.array(Y1_val), epochs=5000)
     
+    # Make predictions on the validation set
+    Y1_val_pred = nn1.predict(np.array(X1_val))
+    if Y1_val_pred.ndim > 1:
+        Y1_val_pred = np.argmax(Y1_val_pred, axis=1)
+    if np.array(Y1_val).ndim > 1:
+        Y1_val = np.argmax(np.array(Y1_val), axis=1)
+    cm = compute_confusion_matrix(Y1_val, Y1_val_pred)
+    plot_confusion_matrix(cm)
+
     plt.show()
